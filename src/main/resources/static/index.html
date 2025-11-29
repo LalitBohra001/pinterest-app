@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Pinterest-like Uploader</title>
+    <style>
+      body { font-family: Arial, sans-serif; max-width: 900px; margin: 24px auto; }
+      .upload { border: 1px solid #ddd; padding: 16px; border-radius: 8px; }
+      .images { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; }
+      .card { border: 1px solid #eee; padding: 8px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+      img { max-width: 100%; display:block; height: auto; border-radius:4px; }
+      .meta { font-size: 13px; color:#333; margin-top:6px; }
+      .btn { display:inline-block; padding:8px 12px; border-radius:6px; background:#0078d4; color:white; cursor:pointer; text-decoration:none; border:none; }
+    </style>
+  </head>
+  <body>
+    <h1>Pinterest-like Uploader</h1>
+
+    <div class="upload">
+      <form id="uploadForm" enctype="multipart/form-data" method="post" action="/api/images">
+        <div>
+          <label>Image file: <input type="file" name="file" id="fileInput" required accept="image/*"></label>
+        </div>
+        <div>
+          <label>Title: <input type="text" name="title" id="title" placeholder="Optional title"></label>
+        </div>
+        <div>
+          <label>Description: <input type="text" name="description" id="description" placeholder="Optional description"></label>
+        </div>
+        <div style="margin-top:8px;">
+          <button type="submit" class="btn">Upload</button>
+        </div>
+      </form>
+
+      <div id="status" style="margin-top:10px;color:green;"></div>
+    </div>
+
+    <h2>Uploaded Images</h2>
+    <div>
+      <button id="refreshBtn" class="btn" style="background:#4caf50">Refresh</button>
+    </div>
+    <div id="images" class="images"></div>
+
+    <script>
+      const form = document.getElementById('uploadForm');
+      const status = document.getElementById('status');
+      const imagesDiv = document.getElementById('images');
+      const refreshBtn = document.getElementById('refreshBtn');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        status.textContent = 'Uploading...';
+        const fd = new FormData(form);
+        try {
+          const res = await fetch('/api/images', { method: 'POST', body: fd });
+          if (!res.ok) {
+            const text = await res.text();
+            status.style.color = 'red';
+            status.textContent = 'Upload failed: ' + res.status + ' ' + text;
+            return;
+          }
+          const json = await res.json();
+          status.style.color = 'green';
+          status.textContent = 'Uploaded: ID ' + json.id;
+          form.reset();
+          loadImages();
+        } catch (err) {
+          status.style.color = 'red';
+          status.textContent = 'Error: ' + err;
+        }
+      });
+
+      async function loadImages() {
+        imagesDiv.innerHTML = 'Loading...';
+        try {
+          const res = await fetch('/api/images');
+          const arr = await res.json();
+          imagesDiv.innerHTML = '';
+          if (!Array.isArray(arr) || arr.length === 0) {
+            imagesDiv.innerHTML = '<div>No images yet</div>';
+            return;
+          }
+          arr.reverse(); // show latest first
+          arr.forEach(img => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            const imgel = document.createElement('img');
+            imgel.src = img.blobUrl;
+            imgel.alt = img.title || img.filename;
+            card.appendChild(imgel);
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            meta.innerHTML = '<strong>' + (img.title || '') + '</strong><br/>' +
+                              (img.description ? (img.description + '<br/>') : '') +
+                              'Likes: ' + (img.likes || 0);
+            card.appendChild(meta);
+            const likeBtn = document.createElement('button');
+            likeBtn.textContent = 'Like';
+            likeBtn.className = 'btn';
+            likeBtn.style.marginTop = '8px';
+            likeBtn.onclick = async () => {
+              await fetch('/api/images/' + img.id + '/like', { method: 'POST' });
+              loadImages();
+            };
+            card.appendChild(likeBtn);
+            imagesDiv.appendChild(card);
+          });
+        } catch (err) {
+          imagesDiv.innerHTML = 'Failed to load images: ' + err;
+        }
+      }
+
+      refreshBtn.addEventListener('click', loadImages);
+      // initial load
+      loadImages();
+    </script>
+  </body>
+</html>
