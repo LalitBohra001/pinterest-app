@@ -1,0 +1,6 @@
+com\example\pinterest\service\StorageService.class
+com\example\pinterest\model\ImageMeta.class
+Minimal\Pinterest_like\Spring\Boot\backend\Azure\Blob\integration\PinterestBackendApplication.class
+com\example\pinterest\config\AzureStorageConfig.class
+com\example\pinterest\controller\ImageController.class
+com\example\pinterest\repository\ImageMetaRepository.class
